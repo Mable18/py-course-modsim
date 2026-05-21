@@ -1,4 +1,4 @@
-name: Push Event Workflow
+name: Integration tests (via python) 
 
 on:
   push:  # push request on 'develop'
@@ -24,8 +24,8 @@ jobs:
       continue-on-error: true
       run : |
         python tests/integration/test-solvers.py || true
-        python tests/integration/test-brom.py || true
-        python tests/integration/test-stokes.py || true
+        python tests/integration/test_brom.py || true
+        python tests/integration/test_stokes.py || true
         ls
         cd $HOME
         ls

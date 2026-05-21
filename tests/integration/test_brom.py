@@ -5,10 +5,16 @@ import os
 import unittest
 import xmlrunner    
 
+import sys
+my_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..","content", "brom"))
+sys.path.insert(0, my_dir)
+print(sys.path)
+
 
 class Bromide3D(unittest.TestCase):
     def setUp(self):
         os.environ['PYVISTA_OFF_SCREEN'] = "True"
+        set_test_dir("content/brom")
 
     def tearDown(self):
         set_test_dir("../..")

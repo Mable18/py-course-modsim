@@ -1,0 +1,15 @@
+name: binder-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy
+  - scipy
+  - matplotlib
+  - pandas
+  - jupyterlab
+  - pip
+  - pip: 
+      - ug4py-base>=0.4.1
+      - ug4py-plugins-navierstokes>=0.0.3
+      - vtk
