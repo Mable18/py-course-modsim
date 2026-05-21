@@ -1,6 +1,9 @@
 # py-course-modsim
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/UG4/py-course-modsim/HEAD)
 
+![Unit tests](https://github.com/UG4/py-course-modsim/actions/workflows/unit_test.yml/badge.svg?branch=main)
+
+
 This course is a Python-based course for an introduction of UG4. 
 
 Please start the course [here](index.ipynb).

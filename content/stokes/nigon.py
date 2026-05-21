@@ -140,11 +140,22 @@ def test_nigon(numRefs, lsolver):
     u = ug4.GridFunction2dCPU1(approxSpace)
     b = ug4.GridFunction2dCPU1(approxSpace)
 
-    domainDisc.assemble_linear(A, b)
-    domainDisc.adjust_solution(u)
-
-    lsolver.init(A, u)
-    lsolver.apply(u,b)
+    import traceback
+    try:
+        domainDisc.assemble_linear(A, b)
+        domainDisc.adjust_solution(u)
+    except Exception as e:
+        traceback.print_exc()
+        print("Exception during assembly: ", e)
+        raise
+        
+    try:
+        lsolver.init(A, u)
+        lsolver.apply(u,b)
+    except Exception as e:
+        traceback.print_exc()
+        print("Exception during solution: ", e)
+        raise
 
     
     if (False):
