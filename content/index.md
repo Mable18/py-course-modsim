@@ -1,4 +1,5 @@
 # Online course "Modellierung und Simulation
+(c) Goethe University Frankfurt
 
 
 ## Part 1: 
@@ -11,13 +12,13 @@ Focus on solution of elliptic and parabolic PDES using FEM/FVM and LIMEX.
 
 ### Finite-Element-Methods
 * [Basic version](tutorial-fem/tutorial-fem-01.ipynb)
-* [...with errors](tutorial-fem/tutorial-fem-02.ipynb
+* [...with error estimates](tutorial-fem/tutorial-fem-02.ipynb)
 
 
 ### Drug Diffusion through Skin
 * [Basic version](skin/SkinDiffusion.ipynb)
-* [...with lagtime](skin/SkinDiffusionWithLagtime.ipynb)
-* [...with binding](skin/SkinDiffusionWithBinding.ipynb)
+* [...with computation of lag-time](skin/SkinDiffusionWithLagtime.ipynb)
+* [...as coupled system with binding](skin/SkinDiffusionWithBinding.ipynb)
 
 
 ## Part 2: Solvers
