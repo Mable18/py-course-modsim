@@ -1,4 +1,4 @@
-name: Push Event Workflow
+name: Integration tests (via python) 
 
 on:
   push:  # push request on 'develop'
