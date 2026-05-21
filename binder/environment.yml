@@ -10,5 +10,6 @@ dependencies:
   - jupyterlab
   - pip
   - pip: 
-      - ug4py-base
+      - ug4py-base>=0.41
+      - ug4py-plugins-navierstokes>=0.0.3
       - vtk
