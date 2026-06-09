@@ -7,7 +7,6 @@ import xmlrunner
 
 import math
 
-
 # Add content/stokes to path.
 import os
 import sys
@@ -16,7 +15,6 @@ sys.path.insert(0, stokes_dir)
 print(sys.path)
 
 import ug4py.pyugcore as ug4
-
 
 class TestStokes(unittest.TestCase):
     def setUp(self):
