@@ -93,7 +93,6 @@ print("✓ Defined python callbacks for source and exact solution")
 
 
 
-
 #-----------------------------------------
 #-- Domain discretization
 #-----------------------------------------
@@ -105,7 +104,7 @@ def CreateDomainDisc(approxSpace, fctCmp, uorder, porder, type):
     elemDisc.set_exact_jacobian(True)
     elemDisc.set_stokes(True)
     elemDisc.set_laplace(True)
-    elemDisc.set_kinematic_viscosity(1)
+    elemDisc.set_kinematic_viscosity(1.0)
     elemDisc.set_source(myUserSource)
 
     # FEM must be stabilized for (Pk, Pk) space
@@ -115,8 +114,9 @@ def CreateDomainDisc(approxSpace, fctCmp, uorder, porder, type):
     #fixPressureDisc = ug4.DirichletBoundary2dCPU1()
     #fixPressureDisc.add(0, "p", "Boundary, PressureNode")
 
+    bndSegs = "Vertex_NE, Vertex_SE, Vertex_NW, Vertex_SW, Edge_E, Edge_W, Edge_N, Edge_S"
     bndDisc = ns.NavierStokesInflowFE2dCPU1(elemDisc)
-    bndDisc.add(mySolutionVel, "Boundary, PressureNode")
+    bndDisc.add(mySolutionVel, bndSegs)
 
     domainDisc = ug4.DomainDiscretization2dCPU1(approxSpace)
     domainDisc.add(elemDisc)
@@ -131,7 +131,7 @@ def CreateDomainDisc(approxSpace, fctCmp, uorder, porder, type):
 def test_nigon(numRefs, lsolver):  
     
     # Create domain.
-    dom = util.CreateDomain("nigon.ugx", numRefs, requiredSubsets=["Inner", "Boundary"])
+    dom = util.CreateDomain("nigon.ugx", numRefs, requiredSubsets=["Inner"])
     approxSpace = CreateApproxSpace(dom, velCmp, uorder, porder)
     domainDisc = CreateDomainDisc(approxSpace, fctCmp, uorder, porder, type)
 

@@ -1,11 +1,8 @@
 
-# (Navier-)Stokes test problem on the unit square using dirichlet conditions, cf.
-#
-# 	Nigon, P., Une nouvelle classe de methodes multigrilles pour 
-#					les problemes mixtes, E.C.L. 84-19. Lyon 1984
-#	Wittum, G., Multi-Grid Methods for Stokes and Navier-Stokes Equations,
-# 				Numer. Math. 54, 543-563, 1989
+# Upscaling of Stokes flow in a porous medium.
+# The example is based on the pressure-drop approach.
 
+# References:
 
 # System imports.
 import sys
