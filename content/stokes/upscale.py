@@ -1,11 +1,8 @@
 
-# (Navier-)Stokes test problem on the unit square using dirichlet conditions, cf.
-#
-# 	Nigon, P., Une nouvelle classe de methodes multigrilles pour 
-#					les problemes mixtes, E.C.L. 84-19. Lyon 1984
-#	Wittum, G., Multi-Grid Methods for Stokes and Navier-Stokes Equations,
-# 				Numer. Math. 54, 543-563, 1989
+# Upscaling of Stokes flow in a porous medium.
+# The example is based on the pressure-drop approach.
 
+# References:
 
 # System imports.
 import sys
@@ -66,74 +63,61 @@ def CreateApproxSpace(dom, velCmp, uorder, porder):
      return approxSpace
 
 
-# -------------------------------------------------------
-# -- User defined terms (e.g. for boundary & sources.)
-# -------------------------------------------------------
-def mySource_(x, y, t, si): 
-	return [36 * math.sin(3*(x+y)), 0.0]				
-myUserSource =ug4.PythonUserVector2d(mySource_)
-
-# Exact solution of the problem
-def exactSolU2d(x, y, t, si):
-    return math.sin(3*(x+y)) 
-mySolutionU =ug4.PythonUserNumber2d(exactSolU2d)
-
-def exactSolV2d(x, y, t, si):
-    return -math.sin(3*(x+y)) 
-mySolutionV =ug4.PythonUserNumber2d(exactSolV2d)
-
-def exactSolP2d(x, y, t, si): 
-    return -6*math.cos(3*(x+y))	
-mySolutionP =ug4.PythonUserNumber2d(exactSolP2d)
-
-def exactSolVel2d(x, y, t, si):
-	return [exactSolU2d(x,y,t,si), exactSolV2d(x,y,t,si)]
-mySolutionVel =ug4.PythonUserVector2d(exactSolVel2d)
-print("✓ Defined python callbacks for source and exact solution")
-
-
-
 #-----------------------------------------
 #-- Domain discretization
 #-----------------------------------------
-def CreateDomainDisc(approxSpace, fctCmp, uorder, porder, type):   
-    domainDisc = ug4.DomainDiscretization2dCPU1(approxSpace)  
-    
-    # create NavierStokes disc
+ # create NavierStokes FEM disc
+def CreateDomainDisc(approxSpace, fctCmp, uorder, porder, type, g):   
+      
     elemDisc= ns.NavierStokesFE2d(fctCmp, "Inner")
     elemDisc.set_exact_jacobian(True)
     elemDisc.set_stokes(True)
     elemDisc.set_laplace(True)
     elemDisc.set_kinematic_viscosity(1.0)
-    elemDisc.set_source(myUserSource)
+    myGrad=ug4.ConstUserVector2d()
+    myGrad.set_entry(0, g[0])
+    myGrad.set_entry(1, g[1])
+    elemDisc.set_source(myGrad)
 
     # FEM must be stabilized for (Pk, Pk) space
     if (type == "fe") and (porder == uorder):
 	    elemDisc.set_stabilization(3)
-    
-    #fixPressureDisc = ug4.DirichletBoundary2dCPU1()
-    #fixPressureDisc.add(0, "p", "Boundary, PressureNode")
-
-    bndSegs = "Vertex_NE, Vertex_SE, Vertex_NW, Vertex_SW, Edge_E, Edge_W, Edge_N, Edge_S"
-    bndDisc = ns.NavierStokesInflowFE2dCPU1(elemDisc)
-    bndDisc.add(mySolutionVel, bndSegs)
 
     domainDisc = ug4.DomainDiscretization2dCPU1(approxSpace)
     domainDisc.add(elemDisc)
-    # domainDisc.add(fixPressureDisc)
-    domainDisc.add(bndDisc)
-
+  
     return domainDisc
+
+def CreateDirichletBC(bndDicts):
+    pressureBnd = ug4.DirichletBoundary2dCPU1() 
+    for bnd in bndDicts: 
+        print(bnd)    
+        pressureBnd.add(bnd["value"], bnd["cmp"], bnd["subset"])
+    return pressureBnd
 
 #-----------------------------------------
 #-- Define test.
 #-----------------------------------------
-def test_nigon(numRefs, lsolver):  
-    
+def test_upscale(numRefs, lsolver, gdir=[1.0, 0.0], filename=None):  
+
     # Create domain.
-    dom = util.CreateDomain("nigon.ugx", numRefs, requiredSubsets=["Inner"])
+    dom = util.CreateDomain("upscale.ugx", numRefs, requiredSubsets=["Inner"])
     approxSpace = CreateApproxSpace(dom, velCmp, uorder, porder)
-    domainDisc = CreateDomainDisc(approxSpace, fctCmp, uorder, porder, type)
+    domainDisc = CreateDomainDisc(approxSpace, fctCmp, uorder, porder, type, gdir)
+    #domainDisc.add(CreateDirichletBC(bndDesc))
+
+    # No slip boundary conditions on grains.
+    noSlipDesc =  [
+        {"value": 0.0, "cmp": "u", "subset": "Grain"},
+        {"value": 0.0, "cmp": "v", "subset": "Grain"}
+    ]       
+    domainDisc.add(CreateDirichletBC(noSlipDesc))
+
+    # Fix pressure at one point to avoid singularity.
+    fixPDesc =  [
+        {"value": 0.0, "cmp": "p", "subset": "Vertex_SE"}
+    ] 
+    domainDisc.add(CreateDirichletBC(fixPDesc))
 
     # Solve Problem.    
     A = ug4.MatrixOperatorCPU1()
@@ -156,38 +140,28 @@ def test_nigon(numRefs, lsolver):
         traceback.print_exc()
         print("Exception during solution: ", e)
         raise
-
     
-    if (False):
+    if (filename):
         # Print solution as vtk.
-        ug4.WriteGridFunctionToVTK(u, "nigon.vtu")
+        ug4.WriteGridFunctionToVTK(u, filename)
 
-    if (False):
-        # Print solution as vtk
-        view=ug4.NumpyVectorView(u)
-        umem = view.memory() 
-        # print("view:",umem)
+    # Compute averages.
+    area = ug4.Integral(1.0, "Inner", 4)
+    avgU=ug4.Integral(u, "u", "Inner", 4)/area
+    avgV=ug4.Integral(u, "v", "Inner", 4)/area
 
-        # Access as numpy array.
-        import numpy as np
-        upy=np.frombuffer(umem, dtype=np.float64)   
-        print(upy)
-
-    # Compute error.
-    errU=ug4.L2Error(mySolutionU, u, "u", 0.0, 4, "Inner")
-    errV=ug4.L2Error(mySolutionV, u, "v", 0.0, 4, "Inner")
-
-
-    print( "Error: ", [errU, errV] )
-    return [errU, errV]
+    print( "Average: ", [avgU, avgV] )
+    return [avgU, avgV]
             
 #-----------------------------------------------------
 #-- Execute tests (if this module is called directly)
 #-----------------------------------------------------
+
 if __name__ == "__main__":
-    test_nigon(numRefs=2, lsolver=ug4.LUCPU1())
-    test_nigon(numRefs=3, lsolver=ug4.LUCPU1())
+    # test_upscale(numRefs=2, lsolver=ug4.LUCPU1(), gdir=[1.0, 0.0], filename="upscale_gradx_2.vtu")
+    test_upscale(numRefs=3, lsolver=ug4.LUCPU1(), gdir=[1.0, 0.0], filename="upscale_gradx_3.vtu")
+    test_upscale(numRefs=3, lsolver=ug4.LUCPU1(), gdir=[0.0, 1.0], filename="upscale_grady_3.vtu")
     if (slu is not None):   
-        test_nigon(numRefs=4, lsolver=slu.SuperLUCPU1())
+        test_upscale(numRefs=4, lsolver=slu.SuperLUCPU1())
 
 # TODO: Test multilevel solvers...
