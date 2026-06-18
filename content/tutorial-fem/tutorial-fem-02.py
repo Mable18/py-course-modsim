@@ -5,14 +5,14 @@
 # 
 # ---
 # # Finite Elements: Error analysis for the Poisson equation
-# The previous section [vorherigen Beispiel](./tutorial-fem-01.ipynb) introduced the key steps for discretizing the Poisson equation. 
+# The [previous section](./tutorial-fem-01.ipynb) introduced the key steps for discretizing the Poisson equation. 
 # We revisit this equation
 # $$\nabla \cdot[-D \nabla u] = f $$
-# with diffusion constant $D$ and source $f$ with different geometries in closer detail. The goal is to determine the discretization error. 
+# with diffusion constant $D=1$ and source $f$ for different geometries in closer detail. The goal is to determine the discretization error. 
 # 
 # 
 
-# In[ ]:
+# In[1]:
 
 
 import sys
@@ -20,32 +20,32 @@ sys.path.append("..")
 
 import modsimtools as util
 
-import ug4py.pyugcore as ug4
+import ug4py.pyugcore as ugcore
 import ug4py.pyconvectiondiffusion as cd
-# import ug4py.pysuperlu as slu
 
 import math  # For sqrt, sin, exp, ...
 
 
-# ## Problemdefinitionen
+# ## Problem definitions
 # 
-# Die Problemdefinitionen legen wir in Form von Klassen ab:
+# The problem definition is moved into classes.
+# 
 # ### Problem 1
 # 
 # Die folgende Klasse kodiert das [vorherige Beispiel](./tutorial-fem-01.ipynb) zur Laplace-Gleichung ($D=1$). Dabei wird die rechte Seite $f$ wird so gesetzt, dass sich Sinusschwingung 
 # 
 # $$u(x,y) = \sin (\mu  \pi x) \sin (\nu  \pi y)$$
 # 
-# als Lösung ergibt. Außerdem diskretisieren wir das Einheitsquadrat mit Vierecken:
+# als Lösung ergibt. Außerdem diskretisieren wir das Einheitsquadrat mit Dreicken/Vierecken:
 
-# In[ ]:
+# In[90]:
 
 
 class SquareConfig:
     # Geometrie
-    gridName= "grids/unit_square_tri.ugx" # "grids/unit_square_tri.ugx",
+    gridName= "grids/unit_square_quad.ugx" # "grids/unit_square_tri.ugx",
     requiredSubsets = {"Inner", "Boundary"}
-    numRefs= 2
+    numRefs= 3
     
     # Constructor
     def __init__(self, mu, nu):
@@ -54,19 +54,18 @@ class SquareConfig:
         
         self.elemDisc = cd.ConvectionDiffusionFE2d("u", "Inner")
         self.elemDisc.set_diffusion(1.0)
-        self.elemDisc.set_source(lambda x,y,t : self.SourceCallback(x,y,t))
+        self.elemDisc.set_source(ugcore.PythonUserNumber2d(lambda x,y,t,si : self.SourceCallback(x,y,t)))
         
-        self.dirichletBND = ug4.DirichletBoundary2dCPU1()
+        self.dirichletBND = ugcore.DirichletBoundary2dCPU1()
         self.dirichletBND.add(0.0, "u", "Boundary")
         
     
     # API function
     def CreateDomainDisc(self,approxSpace):   
-        domainDisc = ug4.DomainDiscretization2dCPU1(approxSpace)  
+        domainDisc = ugcore.DomainDiscretization2dCPU1(approxSpace)  
         domainDisc.add(self.elemDisc)
         domainDisc.add(self.dirichletBND)
         return domainDisc
-    
     
     # Callback fuer rechte Seite
     def SourceCallback(self, x, y, t):
@@ -75,73 +74,63 @@ class SquareConfig:
         scale =  (mu*mu + nu*nu)*(math.pi)*(math.pi)
         return scale*math.sin(math.pi*mu*x)* math.sin(math.pi*nu*y)
 
-    def SolutionCallback(self,x,y,t):
-        return math.sin(math.pi*self.mu*x)* math.sin(self.math.pi*self.nu*y)
+    # This is the exact solution.
+    def SolutionCallback(self,x,y,t,si):
+        return math.sin(math.pi*self.mu*x)* math.sin(math.pi*self.nu*y)
 
 
 # ### Problem 2
+# This is an example of a circle with a nook ("einspringende Ecke"). The solution is not very regular.
 
-# In[ ]:
-
-
-# Callback function boundary values.
-def SectorDirichletSol(x, y, t, si):
-    r = math.sqrt(x*x+y*y);
-    phi = math.atan2(y,x);
-    if (phi<0) : phi = phi + 2*math.pi; 
-    val=math.pow(r,(2/3))*math.sin(phi/3.0*2);
-    return val
-
-
-# In[ ]:
+# In[118]:
 
 
 class SectorProblem:
     # Geometrie
-    gridName= "grids/sectorTest.ugx"
+    gridName= "grids/sector_ref0.ugx"
+    # gridName= "grids/sectorTest.ugx"
+    
     requiredSubsets = {"Inner", "Circle", "Cut"}
-    numRefs= 4
+    numRefs= 2
     
     # Constructor
-    def __init__(self):
-        self.mu = 1.0
-        self.nu = 4.0
+    def __init__(self ,mu = 1.0, nu = 4.0):
+        self.mu = mu
+        self.nu = nu
         
         self.elemDisc = cd.ConvectionDiffusionFE2d("u", "Inner")
         self.elemDisc.set_diffusion(1.0)
         self.elemDisc.set_source(0.0)
     
-        self.dirichletBND = ug4.DirichletBoundary2dCPU1()
-        self.dirichletBND.add(ug4.PythonUserNumber2d(SectorDirichletSol), "u", "Circle")
+        self.dirichletBND = ugcore.DirichletBoundary2dCPU1()
+        self.dirichletBND.add(ugcore.PythonUserNumber2d(self.SolutionCallback), "u", "Circle")
         self.dirichletBND.add(0.0, "u", "Cut")
-        
-    # Randbedingungen
-    def MyDirichletBndCallback1(x, y, t):
-        if (y==1) : return True, 0.0 
-        elif (y==0) : return True, math.sin(math.pi*1*x)
-        else : return False, 0.0 
     
     # API function
     def CreateDomainDisc(self,approxSpace):   
-        domainDisc = ug4.DomainDiscretization2dCPU1(approxSpace)  
+        domainDisc = ugcore.DomainDiscretization2dCPU1(approxSpace)  
         domainDisc.add(self.elemDisc)
         domainDisc.add(self.dirichletBND)
         return domainDisc
     
-    # Solution
+    # This is the exact solution.
     def SolutionCallback(self,x,y,t,si):
-        return SectorDirichletSol(x,y,t,si)
+        r = math.sqrt(x*x+y*y);
+        phi = math.atan2(y,x);
+        if (phi<0) : phi = phi + 2*math.pi; 
+        val=math.pow(r,(2/3))*math.sin(phi/3.0*2);
+        return val
     
    
 
 
-# ### Auswahl einer Konfiguration
-# Aus den o.g. Konfigurationen wählen wir eine aus:
+# ### Problem selection
+# Select one of the problems:
 
-# In[ ]:
+# In[119]:
 
 
-#CONFIG = SquareConfig(1,4)
+#CONFIG = SquareConfig(1,3)
 CONFIG = SectorProblem()
 
 
@@ -150,7 +139,7 @@ CONFIG = SectorProblem()
 # Die folgenden Schritte sind aus dem [vorherigen Beispiel](./tutorial-fem-01.ipynb) bekannt:
 # 
 
-# In[ ]:
+# In[120]:
 
 
 dom = util.CreateDomain(CONFIG.gridName, CONFIG.numRefs, CONFIG.requiredSubsets)
@@ -158,20 +147,15 @@ approxSpace = util.CreateApproximationSpace(dom, dict(fct = "u", type = "Lagrang
 domainDisc = CONFIG.CreateDomainDisc(approxSpace)
 
 
-# ### Konfiguration eines iterativen Lösers
-# 
-# Ein Mehrgitterverfahren hat lediglich lineare Komplexität
+# ### Assemble and solve linear system 
+# Assemble as usual:
 
-# ### Assembliere und löse LGS
-# 
-
-# In[ ]:
+# In[121]:
 
 
-Ah = ug4.AssembledLinearOperatorCPU1(domainDisc)
-uh = ug4.GridFunction2dCPU1(approxSpace)
-bh = ug4.GridFunction2dCPU1(approxSpace)
-
+Ah = ugcore.AssembledLinearOperatorCPU1(domainDisc)
+uh = ugcore.GridFunction2dCPU1(approxSpace)
+bh = ugcore.GridFunction2dCPU1(approxSpace)
 
 import traceback
 try:
@@ -183,82 +167,108 @@ except Exception as inst:
     
 
 
-# In[ ]:
+# Instead of an LU decomposition, use a **multigrid method** as a solver, which has linear complexity.
+
+# In[122]:
 
 
-# solver = ug4.LUCPU1()
+# solver = ugcore.LUCPU1()
+
+
+# In[123]:
+
+
 sys.path.append("..")
 import util.solver_util as util_solver
 
 gmg = util_solver.CreateMultigridPrecond(approxSpace, domainDisc, "V",2,2)
 gmg.set_discretization(domainDisc)
 
-solver = ug4.LinearSolverCPU1()
+solver = ugcore.LinearSolverCPU1()
 solver.set_preconditioner(gmg)
 solver.set_convergence_check(util_solver.convCheck)
 
 
-# In[ ]:
+# In[124]:
 
 
 try:
     solver.init(Ah, uh)
     solver.apply(uh, bh)
 except Exception as inst:
+    traceback.print_exc()
     print(inst)
     
 
 
-# In[ ]:
+# In[125]:
 
 
-import pyvista
-pyvista.start_xvfb()
-pyvista.set_jupyter_backend('trame')
-
-ug4.WriteGridFunctionToVTK(uh, "fem02_solution_u")
-result = pyvista.read("fem02_solution_u.vtu")
-result.plot(scalars="u", show_edges=True, cmap='jet')
+ugcore.WriteGridFunctionToVTK(uh, "fem02_solution_u")
 
 
-# ## Fehleranalyse
+# In[138]:
+
+
+try:
+    import pyvista
+    pyvista.set_jupyter_backend('static')
+    # pyvista.start_xvfb()
+    # pyvista.set_jupyter_backend('trame')
+except Exception:
+    pyvista=None
+
+
+# In[139]:
+
+
+if pyvista is not None:
+    result = pyvista.read("fem02_solution_u.vtu")
+    result.plot(scalars="u", show_edges=True, cmap='jet')
+
+
+# ## Error analysis
 # 
 # Falls die  Lösung analytisch bekannt ist, können wir den Diskretisierungsfehler der numerischen Lösung $u_h$ bestimmen.  
 # 
 # Dies geschieht in der L2-Norm: $$\|u-u_h\|_0 := \sqrt{\int_\Omega (u-u_h)^2 }$$
 
-# In[ ]:
+# In[133]:
 
 
-err0=ug4.L2Error(ug4.PythonUserNumber2d(CONFIG.SolutionCallback), uh, "u", 1.0, 4)
+err0=ugcore.L2Error(ugcore.PythonUserNumber2d(CONFIG.SolutionCallback), uh, "u", 1.0, 4)
 print(err0)
 
 
 #  Alternativ kann die H1-Norm verwendet werden, welche auch Ableitungen berücksichtigt: $$\|u-u_h\|_1 := \sqrt{\int_\Omega (u-u_h)^2+ (\nabla (u-u_h))^2 }$$
 # 
 
-# In[ ]:
+# In[134]:
 
 
 uref = uh.clone()
-ug4.Interpolate(ug4.PythonUserNumber2d(CONFIG.SolutionCallback), uref, "u")
-err1=ug4.H1Error(uref, "u",  uh, "u", 2, "Inner")
+ugcore.Interpolate(ugcore.PythonUserNumber2d(CONFIG.SolutionCallback), uref, "u")
+err1=ugcore.H1Error(uref, "u",  uh, "u", 2, "Inner")
 print(err1)
 
 
-# In[ ]:
+# We can visualize the error as well:
+
+# In[135]:
 
 
 errh = uh.clone()
-ug4.VecScaleAdd2(errh, 1.0, uh, -1.0, uref)
-ug4.WriteGridFunctionToVTK(errh, "tmp/fem02_error")
-result = pyvista.read("tmp/fem02_error.vtu")
-result.plot(scalars="u", show_edges=True, cmap='jet')
+ugcore.VecScaleAdd2(errh, 1.0, uh, -1.0, uref)
+ugcore.WriteGridFunctionToVTK(errh, "tmp/fem02_error")
+
+if pyvista is not None:
+    result = pyvista.read("tmp/fem02_error.vtu")
+    result.plot(scalars="u", show_edges=True, cmap='jet')
 
 
 # Die Werte speichern wir in einer Tabelle:
 
-# In[ ]:
+# In[113]:
 
 
 import numpy as np
@@ -272,7 +282,7 @@ esquare=np.array([
 ])
 
 
-# In[ ]:
+# In[140]:
 
 
 esector=np.array([
@@ -285,7 +295,7 @@ esector=np.array([
 ])
 
 
-# In[ ]:
+# In[141]:
 
 
 import matplotlib.pyplot as pyplot
@@ -305,7 +315,7 @@ pyplot.legend()
 pyplot.loglog(True)
 
 
-# In[ ]:
+# In[142]:
 
 
 import matplotlib.pyplot as pyplot
@@ -327,6 +337,12 @@ pyplot.plot(0.5**(esector[:,0]), (0.5**(esector[:,0]))**0.5, label='O(sqrt(h))',
 
 pyplot.legend()
 pyplot.loglog(True)
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
