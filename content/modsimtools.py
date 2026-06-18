@@ -39,8 +39,6 @@ def CreateApproximationSpace(dom, approxSpaceDesc):
     approxSpace.add_fct(approxSpaceDesc["fct"], approxSpaceDesc["type"], approxSpaceDesc["order"])
     approxSpace.init_levels()
     approxSpace.init_top_surface()
-    print("Approximation space:")
-    approxSpace.print_statistic()
     return approxSpace
 
 def CreateDiffusionElemDisc(fname, subdom, mass_scale, diffusion, reaction):
