@@ -17,8 +17,9 @@ import ug4py.pylimex as limex
 
 
 # Grid and domain
-gridName = "grids/laplace_sample_grid_2d_l50.ugx"
-numRefs = 5
+# gridName = "grids/laplace_sample_grid_2d_l50.ugx"
+gridName = "grids/fish_grid_with_eye.ugx"
+numRefs = 3
 mandatorySubsets = ["Inner", "Boundary"]
 
 # Create domain (modsimtools handles loading and refinement)
@@ -139,13 +140,27 @@ endTime = max(charTimeDiff, charTimeFeat)*100
 
 
 limexDesc = util.GetLimexDefaultDesc()
+print("LIMEX config:")
+print(limexDesc)
+limexDesc["TOL"]=1e-2
 limex = util.CreateLimexIntegrator(domainDisc, limexDesc, dt)
 
+limex.set_dt_min(dt*1e-3)
+limex.set_dt_max((endTime-startTime)/50)
 
 # Create callback observer for measuring mass.
+ti = []
+mi = []
+ji = []
 def MyMassCallback(usol, step, time, dt) :
     m=ug4.Integral(usol, "c", "Inner") 
-    print (f"Step {step}, time {time:.4f}, mass {m:.6f}")  
+    j=ug4.H1SemiNorm(usol, "mu", 4, "Inner")
+    j=-CahnHilliardModel.M*j*j
+    print (f"Step {step}, time {time:.4f}, mass {m:.6f}, energy change {j:.6f}") 
+ 
+    ti.append(time)
+    mi.append(m)
+    ji.append(j)
 massobserver = ug4.PythonCallbackObserver2dCPU1(MyMassCallback) 
 limex.attach_observer(massobserver)
 
@@ -153,13 +168,24 @@ limex.attach_observer(massobserver)
 
 # Create callback observer for file I/O.
 def MyVTKCallback(usol, step, time, dt) :
-    ug4.WriteGridFunctionToVTK(usol, "vtk/CahnHilliardTuring"+str(int(step)).zfill(5)+".vtu")
+    ug4.WriteGridFunctionToVTK(usol, "vtk/CahnHilliardFish"+str(int(step)).zfill(5)+".vtu")
 vtkobserver = ug4.PythonCallbackObserver2dCPU1(MyVTKCallback) 
 limex.attach_observer(vtkobserver)
 
 
 # Run problem!
 limex.apply(u, endTime, u, startTime)
+
+
+if True:
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    plt.plot(ti, ji, 'o-')  # circles connected by lines
+    plt.xlabel('time')
+    plt.ylabel('mass')
+    plt.grid()
+    plt.show()
 
 
 print("done")
