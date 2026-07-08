@@ -23,9 +23,10 @@ jobs:
     - name : Run tests
       continue-on-error: true
       run : |
-        python tests/integration/test-solvers.py || true
+        python tests/integration/test_solvers.py || true
         python tests/integration/test_brom.py || true
         python tests/integration/test_stokes.py || true
+        python tests/integration/test_tutorial_fem.py || true
         ls
         cd $HOME
         ls
