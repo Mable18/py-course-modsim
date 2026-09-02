@@ -3,7 +3,7 @@
 
 
 import sys
-sys.path.insert(0, "/Users/anaegel/Software/ug4-git")
+# sys.path.insert(0, "/Users/anaegel/Software/ug4-git")
 sys.path.append("..")
 
 
@@ -44,15 +44,14 @@ class MyProblem:
         self.elemDisc = elemDisc
 
         self.dirichletBND = ugcore.DirichletBoundary3dCPU1()
-        self.dirichletBND.add(-0.1, "uz", "Top")  # Compress (negative value) the top of the cylinder
+ 	# Compress (negative value) the top of the cylinder
+        self.dirichletBND.add(-0.1, "uz", "Top") 
+        self.dirichletBND.add(-0.1, "uz", "TopRing") 
 
-         # Fix z deformation at the bottom of the cylinder.
-        #self.dirichletBND.add(0.0, "uz", "Bottom") 
-
-        # Avoid rigid body motion by fixing the bottom pole in all directions.
-        self.dirichletBND.add(0.0, "ux", "Bottom, BottomPole") 
-        self.dirichletBND.add(0.0, "uy", "Bottom, BottomPole") 
-        self.dirichletBND.add(0.0, "uz", "Bottom, BottomPole") 
+         # Fix any deformation at the bottom of the cylinder.
+        self.dirichletBND.add(0.0, "ux", "Bottom, BottomRing") 
+        self.dirichletBND.add(0.0, "uy", "Bottom, BottomRing") 
+        self.dirichletBND.add(0.0, "uz", "Bottom, BottomRing") 
         
        
         
@@ -130,3 +129,6 @@ except Exception as inst:
 
 
 ugcore.WriteGridFunctionToVTK(uh, "cylinder.vtu")
+if pyvista is not None:
+    result = pyvista.read("mycube.vtu")
+    result.plot(scalars="uz", show_edges=True, cmap='jet')
