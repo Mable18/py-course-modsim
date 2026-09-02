@@ -37,20 +37,31 @@ baseSolver.set_convergence_check(baseConvCheck)
 baseSolver = ug4.LUCPU1()
 
 
-
-def CreateMultigridPrecond(approxSpace, domainDisc, cycle, nu1, nu2) :
-    #Geometric Multi Grid
-    gmg = ug4.GeometricMultiGrid2dCPU1(approxSpace)
+def InitMultigridPrecond(gmg, domainDisc, cycle, nu1, nu2) :
     gmg.set_discretization(domainDisc)
     # gmg:set_rap(True)                   # use Galerkin A_H=RAP, if true (alternative: assemble coarse system)
-
-
+    
+    
     gmg.set_base_level(0)        # select level for coarsest grid
     gmg.set_base_solver(baseSolver)          # select base solver
-
+    
     gmg.set_smoother(sgs)      # select smoother
     gmg.set_cycle_type(cycle)    # select cycle type "V,W,F"
     gmg.set_num_presmooth(nu1)   # select nu1
     gmg.set_num_postsmooth(nu2)  # select nu2
-    
+        
     return gmg
+    
+
+def CreateMultigridPrecond(approxSpace, domainDisc, cycle, nu1, nu2) :
+    #Geometric Multi Grid
+    gmg = ug4.GeometricMultiGrid2dCPU1(approxSpace)
+    InitMultigridPrecond(gmg, domainDisc, cycle, nu1, nu2)   
+    return gmg
+
+def CreateMultigridPrecond3D(approxSpace, domainDisc, cycle, nu1, nu2) :
+    #Geometric Multi Grid
+    gmg = ug4.GeometricMultiGrid3dCPU1(approxSpace)
+    InitMultigridPrecond(gmg, domainDisc, cycle, nu1, nu2)   
+    return gmg
+
